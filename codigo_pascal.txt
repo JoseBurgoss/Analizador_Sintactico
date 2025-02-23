@@ -1,0 +1,23 @@
+program Ejemplo;
+var
+    x: integer;
+    y: string;
+
+procedure Saludar;
+begin
+    writeln('Hola');
+end;
+
+function Sumar(a, b: integer): intege;
+begin
+    Sumar := a + b;
+end;
+
+begin
+    if x > 10 then
+        writeln('x es mayor que 10');
+    while y <> '' do
+        writeln('y no está vacío');
+    for i := 1 to 10 do
+        writeln(i);
+end.
