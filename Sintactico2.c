@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <ctype.h>
 
+
+
 const char* palabras_clave[] = {"begin", "end", "if", "then", "else", "while", "do", "for", "to", "downto", "repeat", 
 								"until", "case", "of", "function", "procedure", "const", "type", "record", "array", 
                                 "var"};
@@ -19,6 +21,28 @@ typedef struct Nodo {
     struct Nodo** hijos;  
     int num_hijos;       
 } Nodo;
+
+Nodo* crear_nodo(const char* tipo, const char* valor);
+void agregar_hijo(Nodo* padre, Nodo* hijo);
+bool end_with_semicolon(const char* str);
+void removeSpaces(char *str);
+void trim(char *str);
+bool contiene_elemento(const char *cadena, const char *array[], int tam_array);
+void trim_semicolon(char *str);
+int contar_elementos(char **array);
+void toLowerCase(char *str);
+char **split_function(const char *str, int *count);
+char *extraer_parentesis(const char *str);
+char **split(const char *str, const char *delim, int *count);
+void mostrar_error(const char* mensaje, int linea, const char* detalle);
+void mostrar_advertencia(const char* mensaje, int linea);
+int es_tipo_valido(const char* tipo);
+void analizar_palabra_clave(Nodo* arbol, const char* linea, int num_linea);
+void analizar_cabecera_funcion(Nodo* arbol, char* linea, int num_linea);
+void analizar_funcion(Nodo* arbol, char* linea, int* num_linea, FILE* archivo);
+void analizar_expresion(Nodo* arbol, char* expr, int num_linea);
+void analizar_asignacion(Nodo* arbol, const char* linea, int num_linea);
+void imprimir_arbol(Nodo* nodo, int nivel);
 
 Nodo* crear_nodo(const char* tipo, const char* valor) {
     // printf("CREAR NODO\n");
@@ -58,8 +82,8 @@ void removeSpaces(char *str) {
 }
 
 void trim(char *str) {
-    printf("TRIM\n");
-    printf("str: %s\n", str);
+    // printf("TRIM\n");
+    // printf("str: %s\n", str);
     char *start = str;
     char *end;
 
@@ -83,6 +107,15 @@ void trim(char *str) {
     // Ajustar la cadena al inicio y añadir terminador nulo
     memmove(str, start, end - start + 1);
     str[end - start + 1] = '\0';
+}
+
+bool contiene_elemento(const char *cadena, const char *array[], int tam_array) {
+    for (int i = 0; i < tam_array; i++) {
+        if (strstr(cadena, array[i]) != NULL) { // strstr devuelve un puntero si encuentra la subcadena
+            return true;  // Encontró al menos una coincidencia
+        }
+    }
+    return false;  // No encontró ninguna coincidencia
 }
 
 void trim_semicolon(char *str) {
@@ -190,9 +223,9 @@ void mostrar_advertencia(const char* mensaje, int linea) {
 }
 
 int es_tipo_valido(const char* tipo) {
-    printf("TIPO: %s\n", tipo);
+    //printf("TIPO: %s\n", tipo);
     for (int i = 0; i < sizeof(tipos_validos) / sizeof(tipos_validos[0]); i++) {
-        printf("Estoy evaluando %s con %s (<- Este fue el que recibi por parametro)\n", tipos_validos[i], tipo);
+        //printf("Estoy evaluando %s con %s (<- Este fue el que recibi por parametro)\n", tipos_validos[i], tipo);
         if (strcmp(tipo, tipos_validos[i]) == 0) {
             return true;  
         }
@@ -200,11 +233,31 @@ int es_tipo_valido(const char* tipo) {
     return false; 
 }
 
-void analizar_funcion(Nodo* arbol, const char* linea, int num_linea) {
-    printf("ANALIZAR FUNCION\n");
+void analizar_palabra_clave(Nodo* arbol, const char* linea, int num_linea) {
+    printf("ANALIZAR PALABRA CLAVE\n");
+    trim((char*)linea);
+    if(end_with_semicolon){
+        trim_semicolon((char*)linea);
+    }
+    printf("linea %i en analizar_palabra_clave: %s\n", num_linea, linea);
+    const int num_palabras_clave = sizeof(palabras_clave) / sizeof(palabras_clave[0]);
+    // bool containsKeyWord = contiene_elemento(linea, palabras_clave, num_palabras_clave);
+    // if (containsKeyWord) {
+    //     printf("La linea %i contiene una palabra clave\n", num_linea);
+    //     Nodo* nodo_keyword = crear_nodo("palabra_clave", linea);
+    //     agregar_hijo(arbol, nodo_keyword);
+    // }
+
+        printf("La linea %i contiene una palabra clave\n", num_linea);
+        Nodo* nodo_keyword = crear_nodo("palabra_clave", linea);
+        agregar_hijo(arbol, nodo_keyword);
+}
+
+void analizar_cabecera_funcion(Nodo* arbol, char* linea, int num_linea){
+    printf("ANALIZAR FUNCION CABECERA\n");
     char nombre_funcion[50];
     int count = 0;
-    printf("linea %i: %s\n", num_linea, linea);
+    printf("linea %i en analizar cabecera funcion: %s\n", num_linea, linea);
     bool semicolon = end_with_semicolon(linea);
 
     if (strncmp(linea, "function ", 9) != 0) {
@@ -232,15 +285,15 @@ void analizar_funcion(Nodo* arbol, const char* linea, int num_linea) {
     agregar_hijo(nodo_funcion, nodo_cabecera_funcion);
     char **partes = split_function(linea, &count);
     trim(partes[0]);
-    printf("Header pt1 %s\n", partes[0]);
+    // printf("Header pt1 %s\n", partes[0]);
     Nodo *nodo_funcion1 = crear_nodo("header pt1", partes[0]); // Create a node for the first part of the header
     agregar_hijo(nodo_cabecera_funcion, nodo_funcion1);
     Nodo* nodo_dos_puntos = crear_nodo("dos puntos", ":"); // Create a node for the colon
     agregar_hijo(nodo_cabecera_funcion, nodo_dos_puntos);
     Nodo* nodo_funcion2 = crear_nodo("header pt2", partes[1]); // Create a node for the second part of the header
     agregar_hijo(nodo_cabecera_funcion, nodo_funcion2);
-    printf("Primera parte de la cadena de la funcion: %s\n", partes[0]);
-    printf("Segunda parte de la cadena de la funcion: %s\n", partes[1]);
+    // printf("Primera parte de la cadena de la funcion: %s\n", partes[0]);
+    // printf("Segunda parte de la cadena de la funcion: %s\n", partes[1]);
     if (sscanf(partes[0], "function %[^;];", nombre_funcion) == 1) {
         char *contenido_parentesis = extraer_parentesis(partes[0]);
         Nodo* nodo_parentesis1 = crear_nodo("parentesis", "'('");
@@ -249,8 +302,9 @@ void analizar_funcion(Nodo* arbol, const char* linea, int num_linea) {
         agregar_hijo(nodo_funcion1, nodo_parentesis1);
         agregar_hijo(nodo_funcion1, nodo_parentesis2);
         agregar_hijo(nodo_funcion1, nodo_parentesis3);
-        printf("Contenido entre paréntesis: %s\n", contenido_parentesis);
+        //printf("Contenido entre paréntesis: %s\n", contenido_parentesis);
         if (contenido_parentesis == NULL) {
+            free(partes);
             mostrar_error("Funcion mal formada", num_linea, linea);
         }
         char **params = split(contenido_parentesis, ";", &count);
@@ -258,7 +312,7 @@ void analizar_funcion(Nodo* arbol, const char* linea, int num_linea) {
         for (int i = 0; i < elem; i++) {
             Nodo* nodo_parametro = crear_nodo("parametro", params[i]);
             agregar_hijo(nodo_parentesis2, nodo_parametro);
-            printf("Param %i: %s\n", i, params[i]);
+            //printf("Param %i: %s\n", i, params[i]);
             if (i < elem - 1) {
                 printf("Agregra punto y coma ya que i es %i y elem es %i\n", i, elem);
                 Nodo* nodo_coma = crear_nodo("punto y coma", ";");
@@ -267,12 +321,12 @@ void analizar_funcion(Nodo* arbol, const char* linea, int num_linea) {
 
             char **parametros = split(params[i], ":", &count);
             int count3 = contar_elementos(parametros);
-            printf("Numero de elementos count3: %i\n", count3);
+            //printf("Numero de elementos count3: %i\n", count3);
             char **paramsSameType = split(parametros[0], ",", &count);
             int numParamsSameType = contar_elementos(paramsSameType);
-            printf("Numero de parametros del mismo tipo: %i\n", numParamsSameType);
+            //printf("Numero de parametros del mismo tipo: %i\n", numParamsSameType);
             for (int j = 0; j < count3; j++) {
-                printf("Parametro j %i: %s\n", j, parametros[j]);
+                //printf("Parametro j %i: %s\n", j, parametros[j]);
                 Nodo* nodo_param_inner = crear_nodo("parametro_inner", parametros[j]);
                 agregar_hijo(nodo_parametro, nodo_param_inner);
                 if (j < count3 - 1) {
@@ -292,10 +346,10 @@ void analizar_funcion(Nodo* arbol, const char* linea, int num_linea) {
                 trim(parametros[1]);
                 toLowerCase(parametros[1]);
                 int chars = strlen(parametros[1]);
-                printf("%s tiene %i letras\n", parametros[1], chars);
+                //printf("%s tiene %i letras\n", parametros[1], chars);
 
                 int isValidType = es_tipo_valido(parametros[1]);
-                printf("isValidType: %i\n", isValidType);
+                //printf("isValidType: %i\n", isValidType);
                 if (!isValidType) {
                     mostrar_error("Tipo de dato no valido", num_linea, linea);
                 }
@@ -304,7 +358,7 @@ void analizar_funcion(Nodo* arbol, const char* linea, int num_linea) {
             trim_semicolon(partes[1]);
             toLowerCase(partes[1]);
             int isValidType = es_tipo_valido(partes[1]);
-            printf("isValidReturnType: %i\n", isValidType);
+            //printf("isValidReturnType: %i\n", isValidType);
             if (!isValidType) {
                 mostrar_error("Tipo de retorno de la funcion dato no valido", num_linea, linea);
             }
@@ -314,31 +368,81 @@ void analizar_funcion(Nodo* arbol, const char* linea, int num_linea) {
         free(contenido_parentesis);
         free(params);
     } else {
-        //mostrar_error("Declaracion 'program' mal formada", num_linea, linea);
+        mostrar_error("Expresion ilegal", num_linea, linea);
     }
+
 }
 
+void analizar_funcion(Nodo* arbol, char* linea, int* num_linea, FILE* archivo) {
+    char buffer[256]; // Variable temporal para leer las líneas
+    bool cabecera_analizada = false; // Variable de control para la cabecera
+
+    if(!cabecera_analizada) {
+        analizar_cabecera_funcion(arbol, linea, *num_linea);
+        cabecera_analizada = true;
+    }
+    Nodo* nodo_cuerpo_funcion = crear_nodo("cuerpo_funcion", "");
+    agregar_hijo(arbol, nodo_cuerpo_funcion);
+    
+
+    while (fgets(buffer, sizeof(buffer), archivo)) {
+        (*num_linea)++;
+        trim(buffer);
+        //printf("linea en analizar_funcion con linea %i: %s\n", *num_linea, linea);
+        if(buffer[0] == '\0'){
+            continue;
+        }
+
+        printf("linea en analizar_funcion con buffer %i: %s\n", *num_linea, buffer);
+
+        printf("a");
+        printf("La cadena contiene := %s\n", strstr(buffer, ":="));
+        if(strstr(buffer, ":=") != NULL){
+            printf("Es una asignacion");
+            analizar_asignacion(nodo_cuerpo_funcion, buffer, *num_linea);
+        }
+
+        if(contiene_elemento(buffer, palabras_clave, sizeof(palabras_clave) / sizeof(palabras_clave[0]))){
+            analizar_palabra_clave(nodo_cuerpo_funcion, buffer, *num_linea);{
+        }
+ 
+
+
+        //printf("cabecera analizada: %s\n", cabecera_analizada ? "true" : "false");
+
+        if (strcmp(buffer, "end") == 0) {
+            printf("Es un end");
+            break;
+            }
+        }
+    }
+}
 
 void analizar_expresion(Nodo* arbol, char* expr, int num_linea) {
     printf("ANALIZAR EXPRESION\n");
     removeSpaces(expr);
-    trim_semicolon(expr);   
+    trim_semicolon(expr);
     printf("EXPRESION: %s\n", expr);
+    
     int count = strlen(expr);
     printf("COUNT: %i\n", count);
+    int num_operadores = sizeof(operadores) / sizeof(operadores[0]);
+    printf("NUM OPERADORES: %i\n", num_operadores);
 
     for (int i = 0; i < count; i++) {
         printf("CHAR: %c\n", expr[i]);
         bool es_operador = false;
 
         // Verificar si el carácter es un operador
-        for (int j = 0; j < sizeof(operadores) / sizeof(operadores[0]); j++) {
-            if (strncmp(&expr[i], operadores[j], strlen(operadores[j])) == 0) {
+        for (int j = 0; j < num_operadores; j++) {  // Suponiendo que num_operadores es la cantidad real de operadores
+            int op_len = strlen(operadores[j]);
+
+            if (i + op_len <= count && strncmp(&expr[i], operadores[j], op_len) == 0) {
                 printf("OPERADOR: %s\n", operadores[j]);
                 Nodo* nodo_operador = crear_nodo("operador", operadores[j]);
                 agregar_hijo(arbol, nodo_operador);
                 es_operador = true;
-                i += strlen(operadores[j]) - 1; // Avanzar el índice para saltar el operador completo
+                i += op_len - 1; // Saltar operador completo
                 break;
             }
         }
@@ -354,30 +458,42 @@ void analizar_expresion(Nodo* arbol, char* expr, int num_linea) {
 
 void analizar_asignacion(Nodo* arbol, const char* linea, int num_linea){
     printf("ANALIZAR ASIGNACION\n");
-    char variable[50], expresion[100];
+
     int count = 0;
-    char **partes = split(linea, ":=", &count);
-    if (count != 2) {
+    char** partes = split(linea, ":=", &count);
+    
+    if (!partes || count != 2) {
         mostrar_error("Asignacion mal formada", num_linea, linea);
+        return;
     }
+
     trim(partes[0]);
     trim(partes[1]);
     toLowerCase(partes[0]);
     toLowerCase(partes[1]);
+
     printf("Parte 1: %s\n", partes[0]);
     printf("Parte 2: %s\n", partes[1]);
+
     Nodo* nodo_asignacion = crear_nodo("asignacion", "");
     agregar_hijo(arbol, nodo_asignacion);
+    
     Nodo* nodo_variable = crear_nodo("variable", partes[0]);
     Nodo* nodo_asignacion_operador = crear_nodo("asignacion_operador", ":=");
     Nodo* nodo_expresion = crear_nodo("expresion", partes[1]);
+
     agregar_hijo(nodo_asignacion, nodo_variable);
     agregar_hijo(nodo_asignacion, nodo_asignacion_operador);
     agregar_hijo(nodo_asignacion, nodo_expresion);
+
     analizar_expresion(nodo_expresion, partes[1], num_linea);
+
+    // Liberar memoria correctamente
+    for (int i = 0; i < count; i++) {
+        free(partes[i]);
+    }
     free(partes);
 }
-
 
 void imprimir_arbol(Nodo* nodo, int nivel) {
     for (int i = 0; i < nivel; i++) printf("  ");  
@@ -388,57 +504,36 @@ void imprimir_arbol(Nodo* nodo, int nivel) {
     }
 }
 
-
-
-
 int main() {
     FILE* archivo = fopen("codigo_pascal.txt", "r");
     if (!archivo) {
         perror("Error al abrir el archivo");
-        return 1;
+        return 1; // Return an error code
     }
 
-    // int count = 0;
-    // int count2 = 0;
-    //const char *text = "function Sumar(a, b: intEger; c: STRING; d: boolean): integer;";
     const char *text = "Sumar := a + b + c * d;";
-    // char** partes = split_function(text, &count);
-    // printf("%s\n", partes[0]);
-    // char *contenido_parentesis = extraer_parentesis(partes[0]);
-    // char** partes2 = split(contenido_parentesis, ";", &count2);
-    // for (int i = 0; i < count2; i++) {
-    //     printf("Parte %i: %s\n", i, partes2[i]);
-    //     free(partes2[i]);
-    // }
-    // printf("Contenido entre paréntesis: %s\n", contenido_parentesis);
-    // if(contenido_parentesis != NULL) {
-    //     printf("Contenido entre paréntesis: %s\n", contenido_parentesis);
-    //     free(contenido_parentesis);
-    // }
-    // for (int i = 0; i < count; i++) {
-    //     printf("Parte %i: %s\n", i, partes[i]);
-    //     free(partes[i]);
-    // }
-
-    
 
     Nodo* arbol = crear_nodo("lineaPrueba", "");
-    analizar_asignacion(arbol, text, 1);
-    //analizar_funcion(arbol, text, 1);
+    //analizar_asignacion(arbol, text, 1);
+
     char linea[256];
     int num_linea = 0;
     while (fgets(linea, sizeof(linea), archivo)) {
+        trim(linea);
+        //if (*linea == '\0') continue;  // Ignorar lineas vacias
+        for (int i = 0; linea[i]; i++) linea[i] = tolower(linea[i]);
+        printf("linea %i: %s\n", num_linea, linea);
+        if (strstr(linea, "function") == linea) {
+            printf("Es una funcion en linea %i, %s\n", num_linea, linea);
+            analizar_funcion(arbol, linea, &num_linea, archivo);
+        }
         num_linea++;
-        //printf("a");
-        //printf("%i  %s", num_linea, linea);
-        //linea[strcspn(linea, "\n")] = 0;  
-        //analizar_linea(arbol, linea, num_linea);
-        //analizar_funcion(arbol, linea, num_linea);
+
+        //printf("linea %i: %s\n", num_linea, linea);
     }
-     
+
     fclose(archivo);
-   	//holaMundo();
     imprimir_arbol(arbol, 0);
 
-    return 0;
+    return 0; // Return success code
 }
