@@ -5,10 +5,10 @@ var
 
 procedure Saludar;
 begin
-    writeln('Hola');
+    writen('Hola');
 end;
 
-function Sumar(a, b: integer): intege;
+function Sumar(a, b: integer): integer;
 begin
     Sumar := a + b;
 end;
