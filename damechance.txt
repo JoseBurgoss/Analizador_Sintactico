@@ -1,0 +1,8 @@
+begin
+    if x > 10 then
+        writeln('x es mayor que 10 vergacion par cono');
+    while y <> '' do
+        writeln('y no está vacío');
+    for i := 1 to 10 do
+        writeln(i);
+end.

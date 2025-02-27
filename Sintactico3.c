@@ -6,14 +6,13 @@
 
 
 
-const char* palabras_clave[] = {"begin", "end", "then", "else", "while", "do", "for", "to", "downto", 
-                                "repeat", "until", "case", "of", "const", "type", "record", "array", "var"};
+const char* palabras_clave[] = {"begin", "end", "if", "then", "else", "while", "do", "for", "to", "downto", 
+                                "repeat", "until", "case", "of", "function", "procedure", "const", "type", 
+                                "record", "array", "var"};
 
 const char* tipos_validos[] = {"integer", "string", "real", "boolean", "char"};
 
-const char* operadoresAritmeticos[] = {"*", "/","mod","+","-"};
-
-const char* operadoresDeComparacion[] = {"<>", "<=", ">=", "<", ">", "="};
+const char* operadores[] = {"*", "/","mod","+","-"};
 
 
 typedef struct Nodo {
@@ -38,17 +37,12 @@ char **split(const char *str, const char *delim, int *count);
 void mostrar_error(const char* mensaje, int linea, const char* detalle);
 void mostrar_advertencia(const char* mensaje, int linea);
 int es_tipo_valido(const char* tipo);
-void analizar_palabra_clave(Nodo* arbol, const char* linea, int *num_linea, bool fromF_Or_P, FILE* archivo);
-void analizar_cabecera_funcion(Nodo* arbol, char* linea, int num_linea, char* nombre_funcion);
-void analizar_funcion(Nodo* arbol, char* linea, int* num_linea, FILE* archivo, char* nombre_funcion);
+void analizar_palabra_clave(Nodo* arbol, const char* linea, int num_linea);
+void analizar_cabecera_funcion(Nodo* arbol, char* linea, int num_linea);
+void analizar_funcion(Nodo* arbol, char* linea, int* num_linea, FILE* archivo);
 void analizar_expresion(Nodo* arbol, char* expr, int num_linea);
 void analizar_asignacion(Nodo* arbol, const char* linea, int num_linea);
 void imprimir_arbol(Nodo* nodo, int nivel);
-void analizar_writeln(Nodo* arbol, const char* linea, int num_linea);
-void analizar_if(Nodo* arbol, const char* linea, int *num_linea, FILE* archivo);
-void analizar_while(Nodo* arbol, const char* linea, int *num_linea, FILE* archivo);
-
-
 
 Nodo* crear_nodo(const char* tipo, const char* valor) {
     // //printf("CREAR NODO\n");
@@ -60,40 +54,6 @@ Nodo* crear_nodo(const char* tipo, const char* valor) {
     nodo->hijos = NULL;
     nodo->num_hijos = 0;
     return nodo;
-}
-
-void agregar_hijo(Nodo* padre, Nodo* hijo) {
-    padre->num_hijos++;
-    padre->hijos = (Nodo**)realloc(padre->hijos, padre->num_hijos * sizeof(Nodo*));
-    padre->hijos[padre->num_hijos - 1] = hijo;
-}
-
-void extraer_condicion_while(const char* linea, char* condicion) {
-    const char* inicio_while = strstr(linea, "while");  // Buscar "while"
-    if (inicio_while != NULL) {
-        // Avanzar al siguiente carácter después de "while"
-        inicio_while += 5;
-
-        // Saltar posibles espacios
-        while (*inicio_while && isspace(*inicio_while)) {
-            inicio_while++;
-        }
-
-        // Encontrar la palabra "do" que marca el final de la condición
-        const char* fin_do = strstr(inicio_while, "do");
-        if (fin_do != NULL) {
-            // Copiar la parte entre "while" y "do"
-            size_t longitud = fin_do - inicio_while;
-            strncpy(condicion, inicio_while, longitud);
-            condicion[longitud] = '\0';  // Terminar la cadena correctamente
-        } else {
-            printf("Error: 'do' no encontrado en la línea.\n");
-            condicion[0] = '\0';  // Devolver cadena vacía en caso de error
-        }
-    } else {
-        printf("Error: 'while' no encontrado en la línea.\n");
-        condicion[0] = '\0';  // Devolver cadena vacía en caso de error
-    }
 }
 
 void obtenerNombreFuncion(const char *cabecera, char *nombre, size_t tam) {
@@ -131,89 +91,17 @@ void obtenerNombreFuncion(const char *cabecera, char *nombre, size_t tam) {
     //printf("Devolvere el nombre de la funcion: %s\n", nombre);
 }
 
-void obtenerNombreProcedure(const char *cabecera, char *nombre, size_t tam) {
-    // Avanzar hasta saltar espacios en blanco iniciales
-    const char *ptr = cabecera;
-    while (*ptr && isspace(*ptr)) {
-        ptr++;
-    }
-    
-    // Verificar que la cabecera comience con "procedure"
-    const char *palabra = "procedure";
-    size_t len = strlen(palabra);
-    
-    if (strncasecmp(ptr, palabra, len) != 0) {
-        // No es una cabecera válida de procedure
-        nombre[0] = '\0';
-        return;
-    }
-    
-    // Mover el puntero después de la palabra "procedure"
-    ptr += len;
-    
-    // Saltar espacios en blanco posteriores
-    while (*ptr && isspace(*ptr)) {
-        ptr++;
-    }
-    
-    // El nombre comienza aquí y termina en el primer espacio o al encontrar '(' o ';'
-    size_t i = 0;
-    while (*ptr && !isspace(*ptr) && *ptr != '(' && *ptr != ';' && i < tam - 1) {
-        nombre[i++] = *ptr;
-        ptr++;
-    }
-    nombre[i] = '\0';
-}
-
-void contenidoWriteln(char* linea, char* contenido) {
-    const char *ptr = linea;
-    while (*ptr && *ptr != '(') {
-        ptr++;
-    }
-    ptr++;
-    size_t i = 0;
-    while (*ptr && *ptr != ')') {
-        contenido[i++] = *ptr;
-        ptr++;
-    }
-    contenido[i] = '\0';
-}
-
 bool starts_with(const char* str, const char* prefix) {
     return strncmp(str, prefix, strlen(prefix)) == 0;
 }
 
-void extraer_condicion_if(const char* linea, char* condicion) {
-    const char* inicio_if = strstr(linea, "if");  // Buscar "if"
-    if (inicio_if != NULL) {
-        // Avanzar al siguiente carácter después de "if"
-        inicio_if += 2;
-
-        // Saltar posibles espacios
-        while (*inicio_if && isspace(*inicio_if)) {
-            inicio_if++;
-        }
-
-        // Encontrar la palabra "then" que marca el final de la condición
-        const char* fin_then = strstr(inicio_if, "then");
-        if (fin_then != NULL) {
-            // Copiar la parte entre "if" y "then"
-            size_t longitud = fin_then - inicio_if;
-            strncpy(condicion, inicio_if, longitud);
-            condicion[longitud] = '\0';  // Terminar la cadena correctamente
-        } else {
-            printf("Error: 'then' no encontrado en la línea.\n");
-            condicion[0] = '\0';  // Devolver cadena vacía en caso de error
-        }
-    } else {
-        printf("Error: 'if' no encontrado en la línea.\n");
-        condicion[0] = '\0';  // Devolver cadena vacía en caso de error
-    }
+void agregar_hijo(Nodo* padre, Nodo* hijo) {
+    padre->num_hijos++;
+    padre->hijos = (Nodo**)realloc(padre->hijos, padre->num_hijos * sizeof(Nodo*));
+    padre->hijos[padre->num_hijos - 1] = hijo;
 }
 
 bool end_with_semicolon(const char* str) {
-    trim((char*)str);
-    printf("STR: %s\n", str);
     size_t len = strlen(str);
     if (str[len - 1] != ';') {
         return false;
@@ -263,7 +151,6 @@ void trim(char *str) {
 bool contiene_elemento(const char *cadena, const char *array[], int tam_array) {
     for (int i = 0; i < tam_array; i++) {
         if (strstr(cadena, array[i]) != NULL) { // strstr devuelve un puntero si encuentra la subcadena
-            printf("La cadena %s contiene %s\n", cadena, array[i]);
             return true;  // Encontró al menos una coincidencia
         }
     }
@@ -293,22 +180,6 @@ void toLowerCase(char *str) {
         *str = tolower((unsigned char) *str);
         str++;
     }
-}
-
-bool contiene_palabra_clave(const char *cadena, const char *array[], int tam_array) {
-    char *copia = strdup(cadena);
-    char *token = strtok(copia, " ,.;()[]{}<>+-*/=!:\"\'\t\n\r"); // Delimitadores comunes
-    while (token != NULL) {
-        for (int i = 0; i < tam_array; i++) {
-            if (strcmp(token, array[i]) == 0) {
-                free(copia);
-                return true;
-            }
-        }
-        token = strtok(NULL, " ,.;()[]{}<>+-*/=!:\"\'\t\n\r");
-    }
-    free(copia);
-    return false;
 }
 
 char **split_function(const char *str, int *count) {
@@ -353,38 +224,6 @@ char *extraer_parentesis(const char *str) {
     return resultado;
 }
 
-char *extraer_string(const char *str) {
-    // Buscar las comillas simples y dobles
-    const char *inicioComillasSimples = strchr(str, '\'');  // Encuentra la primera comilla simple
-    const char *finComillasSimples = strrchr(str, '\'');    // Encuentra la última comilla simple
-
-    const char *inicioComillasDobles = strchr(str, '\"');   // Encuentra la primera comilla doble
-    const char *finComillasDobles = strrchr(str, '\"');     // Encuentra la última comilla doble
-
-    // Comprobamos que las comillas simples o dobles existan y estén bien colocadas
-    if (inicioComillasSimples && finComillasSimples && inicioComillasSimples < finComillasSimples) {
-        size_t len = finComillasSimples - inicioComillasSimples - 1;
-        char *resultado = (char *)malloc(len + 1);
-        if (resultado) {
-            strncpy(resultado, inicioComillasSimples + 1, len);
-            resultado[len] = '\0';
-            return resultado;
-        }
-    }
-
-    if (inicioComillasDobles && finComillasDobles && inicioComillasDobles < finComillasDobles) {
-        size_t len = finComillasDobles - inicioComillasDobles - 1;
-        char *resultado = (char *)malloc(len + 1);
-        if (resultado) {
-            strncpy(resultado, inicioComillasDobles + 1, len);
-            resultado[len] = '\0';
-            return resultado;
-        }
-    }
-
-    return NULL;  // Si no encuentra comillas válidas
-}
-
 char **split(const char *str, const char *delim, int *count) {
     char *copia = strdup(str); // Copia de la cadena original para no modificarla
     int capacidad = 10; // Tamaño inicial del array de resultados
@@ -414,7 +253,7 @@ char **split(const char *str, const char *delim, int *count) {
 }
 
 void mostrar_error(const char* mensaje, int linea, const char* detalle) {
-    fprintf(stderr, "Error en la linea %d: %s -> %s\n", linea+1, mensaje, detalle);
+    fprintf(stderr, "Error en la linea %d: %s -> %s\n", linea, mensaje, detalle);
     exit(1);
 }
 
@@ -433,7 +272,7 @@ int es_tipo_valido(const char* tipo) {
     return false; 
 }
 
-void analizar_inicializacion_variables(Nodo* arbol, char* linea, int* num_linea, FILE* archivo, char* ultima_linea) {
+void analizar_inicializacion_variables(Nodo* arbol, const char* linea, int* num_linea, FILE* archivo, char* ultima_linea) {
     char buffer[256]; // Variable temporal para leer las líneas
     trim((char*)linea);
     Nodo* nodo_keyword = crear_nodo("palabra_clave", linea);
@@ -441,7 +280,7 @@ void analizar_inicializacion_variables(Nodo* arbol, char* linea, int* num_linea,
     int count = 0;
     while(fgets(buffer, sizeof(buffer), archivo)) {
         if (starts_with(buffer, "begin") || starts_with(buffer, "procedure") || starts_with(buffer, "function") || starts_with(buffer, "writeln")) {
-            //strcpy(ultima_linea, buffer); // Copiar la última línea leída
+            strcpy(ultima_linea, buffer); // Copiar la última línea leída
             break;
         }
         (*num_linea)++;
@@ -480,8 +319,6 @@ void analizar_inicializacion_variables(Nodo* arbol, char* linea, int* num_linea,
         if(!isValidType){
             mostrar_error("Tipo de dato no valido", *num_linea, buffer);
         }
-        Nodo* nodo_dos_puntos = crear_nodo("dos_puntos", ":");
-        agregar_hijo(nodo_asignacion, nodo_dos_puntos);
         Nodo* nodo_tipo = crear_nodo("tipo", partesInicializacion[1]);
         agregar_hijo(nodo_asignacion, nodo_tipo);
         
@@ -491,60 +328,27 @@ void analizar_inicializacion_variables(Nodo* arbol, char* linea, int* num_linea,
         printf("linea %i en analizar_inicializacion_variables: %s\n", *num_linea, buffer);
     }
     printf("Linea al terminar el while en inicializacion variables: %i\n", *num_linea);
-    
-    strcpy(linea, buffer);
-    printf("Buffer %s o linea %s al terminar el while en inicializacion variables\n", buffer, linea);
+    printf("Buffer o linea al terminar el while en inicializacion variables: %s\n", buffer);
 }
 
-void analizar_palabra_clave(Nodo* arbol, const char* linea, int *num_linea, bool fromF_Or_P, FILE* archivo) {
-    char buffer[256]; // Variable temporal para leer las líneas
+void analizar_palabra_clave(Nodo* arbol, const char* linea, int num_linea) {
+    //printf("ANALIZAR PALABRA CLAVE\n");
     trim((char*)linea);
-    printf("La linea que se supone es una palabra clave: %s\n", linea);
-    const int num_palabras_clave = sizeof(palabras_clave) / sizeof(palabras_clave[0]);
-    printf("%i\n", strlen(linea));
-    printf("%i\n", strlen("begin"));
-    printf("Es un begin? %i\n", strcmp(linea, "begin") == 0);
-    printf("Vengo de una funcion or procedure? %i\n", fromF_Or_P);
-    if((strcmp(linea, "begin") == 0) && fromF_Or_P){
-        printf("Es un begin dentro del cuerpo de una funcion o procedimiento\n");
-        Nodo* nodo_keyword = crear_nodo("palabra_clave", linea);
-        agregar_hijo(arbol, nodo_keyword);
-        return;
-    }else if((strcmp(linea, "begin") == 0) && !fromF_Or_P){
-        printf("Es un begin que no esta dentro del cuerpo de una funcion o procedimiento\n");
-        Nodo* nodo_keyword = crear_nodo("palabra_clave", linea);
-        agregar_hijo(arbol, nodo_keyword);
-        while (fgets(buffer, sizeof(buffer), archivo)) {
-            // Process the procedure body here
-            (*num_linea)++;
-            trim(buffer);
-            if (buffer[0] == '\0') {
-                continue;
-            }
-        printf("linea %i en analizar_palabra_clave: %s\n", *num_linea, buffer);
-        if(starts_with(buffer, "if")){
-            printf("Es un if dentro del begin que no esta dentro de una funcion\n");
-            analizar_if(nodo_keyword, buffer, num_linea, archivo);
-            
-        }
-
-        if(starts_with(buffer, "while")){
-            printf("linea %i en analizar_palabra_clave: %s\n", *num_linea, buffer);
-            printf("Es un while dentro del begin que no esta dentro de una funcion\n");
-            analizar_while(nodo_keyword, buffer, num_linea, archivo);
-        }
-        if (starts_with(buffer, "end")) {
-            Nodo* nodo_keyword = crear_nodo("palabra_clave", buffer);
-            agregar_hijo(arbol, nodo_keyword);
-            break;
-        }
-        }
-        return;
-    }else{
-        Nodo* nodo_keyword = crear_nodo("palabra_clave", linea);
-        agregar_hijo(arbol, nodo_keyword);
+    if(end_with_semicolon){
+        trim_semicolon((char*)linea);
     }
+    ////printf("linea %i en analizar_palabra_clave: %s\n", num_linea, linea);
+    const int num_palabras_clave = sizeof(palabras_clave) / sizeof(palabras_clave[0]);
+    // bool containsKeyWord = contiene_elemento(linea, palabras_clave, num_palabras_clave);
+    // if (containsKeyWord) {
+    //     //printf("La linea %i contiene una palabra clave\n", num_linea);
+    //     Nodo* nodo_keyword = crear_nodo("palabra_clave", linea);
+    //     agregar_hijo(arbol, nodo_keyword);
+    // }
 
+        ////printf("La linea %i contiene una palabra clave\n", num_linea);
+        Nodo* nodo_keyword = crear_nodo("palabra_clave", linea);
+        agregar_hijo(arbol, nodo_keyword);
 }
 
 void analizar_cabecera_funcion(Nodo* arbol, char* linea, int num_linea, char* nombre_funcion) {
@@ -552,9 +356,9 @@ void analizar_cabecera_funcion(Nodo* arbol, char* linea, int num_linea, char* no
     obtenerNombreFuncion(linea, nombre_funcion, sizeof(nombre_funcion));
     char nombre_funcion_nosirve[256];
     int count = 0;
-    printf("linea %i en analizar cabecera funcion: %s\n", num_linea, linea);
+    //printf("linea %i en analizar cabecera funcion: %s\n", num_linea, linea);
     bool semicolon = end_with_semicolon(linea);
-    printf("Semicolon: %i\n", semicolon);
+
     if (strncmp(linea, "function ", 9) != 0) {
         mostrar_error("La declaración debe iniciar con 'function'", num_linea, linea);
     }
@@ -703,14 +507,13 @@ void analizar_funcion(Nodo* arbol, char* linea, int* num_linea, FILE* archivo, c
             trim(partesRetornoFuncion[1]);
 
             toLowerCase(partesRetornoFuncion[0]);
-            toLowerCase(nombre_funcion);
             if(partesRetornoFuncion[0][0] == '\0'){
                 mostrar_error("No se ha asignado una variable al valor de retorno", *num_linea, buffer);
             }else if(partesRetornoFuncion[1][0] == '\0'){
                 mostrar_error("No se ha asignado un valor a la variable de retorno", *num_linea, buffer);
             }else if(strcmp(partesRetornoFuncion[0], nombre_funcion) != 0){
-                printf("PartesRetornoFuncion[0]: %s\n", partesRetornoFuncion[0]);
-                printf("Nombre de la funcion: %s\n", nombre_funcion);
+                //printf("PartesRetornoFuncion[0]: %s\n", partesRetornoFuncion[0]);
+                //printf("Nombre de la funcion: %s\n", nombre_funcion);
                 mostrar_error("La variable de retorno no coincide con el nombre de la funcion", *num_linea, buffer);
             }
             //printf("Parte 0 de la asignacion dentro de la funcion: %s\n", partesRetornoFuncion[0]);
@@ -719,24 +522,19 @@ void analizar_funcion(Nodo* arbol, char* linea, int* num_linea, FILE* archivo, c
         }
 
         if(contiene_elemento(buffer, palabras_clave, sizeof(palabras_clave) / sizeof(palabras_clave[0]))){
-            analizar_palabra_clave(nodo_cuerpo_funcion, buffer, num_linea, true, archivo);{
+            analizar_palabra_clave(nodo_cuerpo_funcion, buffer, *num_linea);{
         }
  
 
 
         ////printf("cabecera analizada: %s\n", cabecera_analizada ? "true" : "false");
 
-        if (strcmp(buffer, "end;") == 0) {
-            printf("Es un end, significa el final de la funcion\n");
+        if (strcmp(buffer, "end") == 0) {
+            //printf("Es un end");
             break;
             }
         }
     }
-
-    //free(nombre_funcion);
-    // free(buffer);
-    // free(linea);
-    // free()
 }
 
 void analizar_expresion(Nodo* arbol, char* expr, int num_linea) {
@@ -747,7 +545,7 @@ void analizar_expresion(Nodo* arbol, char* expr, int num_linea) {
     
     int count = strlen(expr);
     //printf("COUNT: %i\n", count);
-    int num_operadores = sizeof(operadoresAritmeticos) / sizeof(operadoresAritmeticos[0]);
+    int num_operadores = sizeof(operadores) / sizeof(operadores[0]);
     //printf("NUM OPERADORES: %i\n", num_operadores);
 
     for (int i = 0; i < count; i++) {
@@ -755,12 +553,12 @@ void analizar_expresion(Nodo* arbol, char* expr, int num_linea) {
         bool es_operador = false;
 
         // Verificar si el carácter es un operador
-        for (int j = 0; j < num_operadores; j++) {  // Suponiendo que num_operadores es la cantidad real de operadoresAritmeticos
-            int op_len = strlen(operadoresAritmeticos[j]);
+        for (int j = 0; j < num_operadores; j++) {  // Suponiendo que num_operadores es la cantidad real de operadores
+            int op_len = strlen(operadores[j]);
 
-            if (i + op_len <= count && strncmp(&expr[i], operadoresAritmeticos[j], op_len) == 0) {
-                //printf("OPERADOR: %s\n", operadoresAritmeticos[j]);
-                Nodo* nodo_operador = crear_nodo("operador", operadoresAritmeticos[j]);
+            if (i + op_len <= count && strncmp(&expr[i], operadores[j], op_len) == 0) {
+                //printf("OPERADOR: %s\n", operadores[j]);
+                Nodo* nodo_operador = crear_nodo("operador", operadores[j]);
                 agregar_hijo(arbol, nodo_operador);
                 es_operador = true;
                 i += op_len - 1; // Saltar operador completo
@@ -816,189 +614,42 @@ void analizar_asignacion(Nodo* arbol, const char* linea, int num_linea){
     free(partes);
 }
 
-void analizar_procedure(Nodo* arbol, const char* linea, int* num_linea, FILE* archivo, char* nombre_procedure) {
+void analizar_procedure(Nodo* arbol, const char* linea, int &num_linea, FILE* archivo){
     char buffer[256]; // Variable temporal para leer las líneas
-    printf("ANALIZAR PROCEDURE\n");
+    char nombre_procedure[50];
+    //printf("ANALIZAR PROCEDURE\n");
     trim((char*)linea);
-    obtenerNombreProcedure(linea, nombre_procedure, sizeof(nombre_procedure));
-    printf("Nombre del procedure: %s\n", nombre_procedure);
-
-    if (strncmp(linea, "procedure ", 10) != 0) {
-        mostrar_error("La declaración debe iniciar con 'procedure'", *num_linea, linea);
+    if(end_with_semicolon){
+        trim_semicolon((char*)linea);
+    }
+    //Nodo* nodo_procedure = crear_nodo()
+    if(sscanf(linea, "procedure %[^;];", nombre_procedure) != 1){
+        mostrar_error("Expresion ilegal", num_linea, linea);
+    }
+    //printf("Nombre del procedure: %s\n", nombre_procedure);
+    printf("linea %i en analizar_procedure: %s\n", num_linea, linea);
+    const int num_palabras_clave = sizeof(palabras_clave) / sizeof(palabras_clave[0]);
+    bool containsKeyWord = contiene_elemento(linea, palabras_clave, num_palabras_clave);
+    if (containsKeyWord) {
+        //printf("La linea %i contiene una palabra clave\n", num_linea);
+        Nodo* nodo_keyword = crear_nodo("palabra_clave", linea);
+        agregar_hijo(arbol, nodo_keyword);
     }
 
-    if (!end_with_semicolon(linea)) {
-        mostrar_error("La declaración debe terminar con ';'", *num_linea, linea);
-    }
-
-    Nodo* nodo_procedure = crear_nodo("procedure", nombre_procedure);
-    agregar_hijo(arbol, nodo_procedure);
-
-    while (fgets(buffer, sizeof(buffer), archivo)) {
-        // Process the procedure body here
-        (*num_linea)++;
+    while(fgets(buffer, sizeof(buffer), archivo)) {
+        if (starts_with(buffer, "begin") || starts_with(buffer, "function") || starts_with(buffer, "writeln")) {
+            break;
+        }
+        num_linea++;
         trim(buffer);
-        
-        if (buffer[0] == '\0') {
-            
+        if(buffer[0] == '\0'){
             continue;
         }
-        printf("Buffer o linea en analizar_procedure: %s\n", buffer);
-        if(contiene_palabra_clave(buffer, palabras_clave, sizeof(palabras_clave) / sizeof(palabras_clave[0]))){
-            printf("Encontre una palabra clave\n");
-            analizar_palabra_clave(nodo_procedure, buffer, num_linea, true, archivo);
+        if(end_with_semicolon(buffer)){
+            trim_semicolon(buffer);
         }
-
-        if(strstr(buffer, "writeln") != NULL){
-            printf("Encontre un writeln\n");
-            analizar_writeln(nodo_procedure, buffer, *num_linea);
-        }
-
-        if(strcmp(buffer, "end;") == 0){
-            printf("Es un end el procedure\n");
-            break;
-        }
+        //printf("linea %i en analizar_procedure: %s\n", num_linea, buffer);
     }
-}
-
-void analizar_writeln(Nodo* arbol, const char* linea, int num_linea) {
-    printf("ANALIZAR WRITELN\n");
-    char contenido[256];
-    contenidoWriteln((char*)linea, contenido);
-    trim((char*)linea);
-    if (!end_with_semicolon(linea)) {
-        mostrar_error("La declaración debe terminar con ';'", num_linea, linea);
-    }
-    printf("Contenido del writeln: %s\n", contenido);
-    Nodo* nodo_writeln = crear_nodo("writeln", linea);
-    agregar_hijo(arbol, nodo_writeln);
-    char* contenido_en_parentesis = extraer_parentesis(linea);
-    printf("Contenido en parentesis: %s\n", contenido_en_parentesis);
-    Nodo* contenido_writeln = crear_nodo("contenido", contenido_en_parentesis);
-    agregar_hijo(nodo_writeln, contenido_writeln);
-    
-}
-
-void analizar_if(Nodo* arbol, const char* linea, int *num_linea, FILE* archivo) {
-    printf("ANALIZAR IF\n");
-    char condicion[256];
-    char buffer[256];
-    extraer_condicion_if(linea, condicion);
-    trim((char*)linea);
-    // if (!end_with_semicolon(linea)) {
-    //     mostrar_error("La declaración debe terminar con ';'", *num_linea, linea);
-    // }
-    printf("Condicion del if: %s\n", condicion);
-    Nodo* nodo_if_statement = crear_nodo("if_statement", linea);
-    agregar_hijo(arbol, nodo_if_statement);
-    Nodo* nodo_if = crear_nodo("if", "if");
-    agregar_hijo(nodo_if_statement, nodo_if);
-    // char* contenido_en_parentesis = extraer_parentesis(linea);
-    // printf("Contenido en parentesis: %s\n", contenido_en_parentesis);
-    Nodo* contenido_if = crear_nodo("contenido", condicion);
-    agregar_hijo(nodo_if, contenido_if);
-    int num_operadores = sizeof(operadoresDeComparacion) / sizeof(operadoresDeComparacion[0]);
-    int count = 0;
-    printf("Numero de operadores de comparacion: %i\n", num_operadores);
-    for(int i = 0; i < sizeof(operadoresDeComparacion)/sizeof(operadoresDeComparacion[0]); i++){
-        printf("Operador de comparacion: %s\n", operadoresDeComparacion[i]);
-        if(strstr(condicion, operadoresDeComparacion[i]) != NULL){
-            printf("Encontre un operador de comparacion, que es: %s\n", operadoresDeComparacion[i]);
-            char** partesCondicion = split(condicion, operadoresDeComparacion[i], &count);
-            printf("Parte 1 de la condicion: %s\n", partesCondicion[0]);
-            printf("Parte 2 de la condicion: %s\n", partesCondicion[1]);
-            Nodo* nodo_operador_izq = crear_nodo("nodo_operador_izq", partesCondicion[0]);
-            Nodo* nodo_operador_der = crear_nodo("nodo_operador_der", partesCondicion[1]);
-            Nodo* nodo_operador = crear_nodo("operador", operadoresDeComparacion[i]);
-            agregar_hijo(contenido_if, nodo_operador_izq);
-            agregar_hijo(contenido_if, nodo_operador);
-            agregar_hijo(contenido_if, nodo_operador_der);
-            break;
-        }
-    }
-    Nodo* then = crear_nodo("then", "then");
-    agregar_hijo(nodo_if_statement, then);
-    while(fgets(buffer, sizeof(buffer), archivo)){
-        (*num_linea)++;
-        trim((char*)buffer);
-        if(linea[0] == '\0'){
-            continue;
-        }
-        printf("linea %i en analizar_if: %s\n", *num_linea, buffer);
-        if(starts_with(buffer, "while") || starts_with(buffer, "for")){
-            printf("Termino el if y dio comienzo otra estructura\n");
-            strcpy((char*)linea, buffer);
-            break;
-        }
-        Nodo* nodo_sentencia = crear_nodo("sentencia", "");
-        agregar_hijo(nodo_if_statement, nodo_sentencia);
-        if(strstr(buffer, "writeln") != NULL){
-            printf("Encontre un writeln en el if");
-            analizar_writeln(nodo_sentencia, buffer, *num_linea);
-        }
-        //if()
-    }
-    //analizar_palabra_clave(nodo_if_statement, then, num_linea, false, archivo);
-    //agregar_hijo(nodo_if, contenido_if);
-}
-
-void analizar_while(Nodo* arbol, const char* linea, int *num_linea, FILE* archivo){
-    printf("ANALIZAR WHILE\n");
-    char condicion[256];
-    char buffer[256];
-    trim((char*)linea);
-    extraer_condicion_while(linea, condicion);
-    printf("Condicion del while: %s\n", condicion);
-    Nodo* while_statement = crear_nodo("while_statement", linea);
-    agregar_hijo(arbol, while_statement);
-    Nodo* nodo_while = crear_nodo("while", "while");
-    agregar_hijo(while_statement, nodo_while);
-    trim(condicion);
-    Nodo* contenido_while = crear_nodo("contenido", condicion);
-    agregar_hijo(nodo_while, contenido_while);
-    int num_operadores = sizeof(operadoresDeComparacion) / sizeof(operadoresDeComparacion[0]);
-    int count = 0;
-    printf("Numero de operadores de comparacion: %i\n", num_operadores);
-    for(int i = 0; i < num_operadores; i++){
-        printf("Operador de comparacion: %s\n", operadoresDeComparacion[i]);
-        if(strstr(condicion, operadoresDeComparacion[i]) != NULL){
-            printf("Encontre un operador de comparacion, que es: %s\n", operadoresDeComparacion[i]);
-            char** partesCondicion = split(condicion, operadoresDeComparacion[i], &count);
-            printf("Parte 1 de la condicion: %s\n", partesCondicion[0]);
-            printf("Parte 2 de la condicion: %s\n", partesCondicion[1]);
-            Nodo* nodo_operador_izq = crear_nodo("nodo_operador_izq", partesCondicion[0]);
-            Nodo* nodo_operador_der = crear_nodo("nodo_operador_der", partesCondicion[1]);
-            Nodo* nodo_operador = crear_nodo("operador", operadoresDeComparacion[i]);
-            agregar_hijo(contenido_while, nodo_operador_izq);
-            agregar_hijo(contenido_while, nodo_operador);
-            agregar_hijo(contenido_while, nodo_operador_der);
-            break;
-        }
-    }
-
-    Nodo* nodo_do = crear_nodo("do", "do");
-    agregar_hijo(while_statement, nodo_do);
-    while(fgets(buffer, sizeof(buffer), archivo)){
-        (*num_linea)++;
-        trim((char*)buffer);
-        if(linea[0] == '\0'){
-            continue;
-        }
-        printf("linea %i en analizar_if: %s\n", *num_linea, buffer);
-        if(starts_with(buffer, "if") || starts_with(buffer, "for") || starts_with(buffer, "while")){
-            printf("Termino el while y dio comienzo otra estructura\n");
-            strcpy((char*)linea, buffer);
-            break;
-        }
-        Nodo* nodo_sentencia = crear_nodo("sentencia", "");
-        agregar_hijo(while_statement, nodo_sentencia);
-        if(strstr(buffer, "writeln") != NULL){
-            printf("Encontre un writeln en el if");
-            analizar_writeln(nodo_sentencia, buffer, *num_linea);
-        }
-        //if()
-    }
-
 }
 
 void imprimir_arbol(Nodo* nodo, int nivel) {
@@ -1014,57 +665,45 @@ int main() {
     FILE* archivo = fopen("codigo_pascal.txt", "r");
     if (!archivo) {
         perror("Error al abrir el archivo");
-        return 1; // Return an error code
+        return 1;
     }
 
-    const char *text = "Sumar := a + b + c * d;";
-
     Nodo* arbol = crear_nodo("programaPrueba", "");
-    //analizar_asignacion(arbol, text, 1);
-
     char linea[256];
+    char ultima_linea[256] = "";
     char nombre_funcion[50];
-    char nombre_procedure[50];  
     int num_linea = 0;
-    while (fgets(linea, sizeof(linea), archivo)) {
+    int procesar_ultima = 0; // Bandera para controlar si se debe procesar ultima_linea
+
+    while (1) {
+        if (procesar_ultima) {
+            strcpy(linea, ultima_linea);
+            procesar_ultima = 0;
+        } else {
+            if (!fgets(linea, sizeof(linea), archivo)) break;
+            num_linea++;
+        }
+
         trim(linea);
-        char ultima_linea[256];
-        //printf("Ultima linea: %s\n", ultima_linea);
-        if (*linea == '\0') continue;  // Ignorar lineas vacias
+        if (*linea == '\0') continue;
+
+        // Convertir a minúsculas después de trim para evitar espacios
         for (int i = 0; linea[i]; i++) linea[i] = tolower(linea[i]);
         printf("linea en main %i: %s\n", num_linea, linea);
-        if(starts_with(linea, "var")) {
-            //printf("Es una inicializacion de variables en linea %i, %s\n", num_linea, linea);
+
+        if (starts_with(linea, "var")) {
             analizar_inicializacion_variables(arbol, linea, &num_linea, archivo, ultima_linea);
-            printf("Linea al terminar la inicializacion de variables: %i\n", num_linea);
-            printf("Linea al terminar la inicializacion de variables: %s\n", linea);
-            //num_linea--;
-            //continue;
-            printf("Linea al decrementar la linea: %i\n", num_linea);
-        }
-        printf("linea en main2 %i: %s\n", num_linea, linea);
-        if (starts_with(linea, "function")) {
-            printf("Es una funcion en linea %i, %s\n", num_linea, linea);
+            if (*ultima_linea != '\0') {
+                procesar_ultima = 1; // Indicar que se debe procesar ultima_linea en la siguiente iteración
+            }
+        } else if (starts_with(linea, "function")) {
             analizar_funcion(arbol, linea, &num_linea, archivo, nombre_funcion);
-        }else if(starts_with(linea, "procedure")){
-            printf("Es un procedure en linea %i, %s\n", num_linea, linea);
-            analizar_procedure(arbol, linea, &num_linea, archivo, nombre_procedure);
-        }else if(starts_with(linea, "if")){
-            printf("Es un if en linea %i, %s\n", num_linea, linea);
-            char condicion[256];
-            extraer_condicion_if(linea, condicion);
-            printf("Condicion del if: %s\n", condicion);
-        }else if(starts_with(linea, "begin")){
-            printf("Es un begin en linea %i, %s\n", num_linea, linea);
-            analizar_palabra_clave(arbol, linea, &num_linea, false, archivo);
+        } else if (starts_with(linea, "procedure")) {
+            analizar_procedure(arbol, linea, num_linea, archivo);
         }
-        num_linea++;
-        printf("Incrementando num_linea: %i\n", num_linea);
-        ////printf("linea %i: %s\n", num_linea, linea);
     }
 
     fclose(archivo);
     imprimir_arbol(arbol, 0);
-
-    return 0; // Return success code
+    return 0;
 }

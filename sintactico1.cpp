@@ -141,8 +141,8 @@ void analizar_linea(Nodo* arbol, char* linea, int num_linea) {
 }
 
 void imprimir_arbol(Nodo* nodo, int nivel) {
-    for (int i = 0; i < nivel; i++) printf("  ");  
-    printf("%s(%s)\n", nodo->tipo, nodo->valor);  
+    for (int i = 0; i < nivel; i++) //printf("  ");  
+    //printf("%s(%s)\n", nodo->tipo, nodo->valor);  
 
     for (int i = 0; i < nodo->num_hijos; i++) {
         imprimir_arbol(nodo->hijos[i], nivel + 1); 
