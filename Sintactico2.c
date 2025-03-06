@@ -184,6 +184,18 @@ bool starts_with(const char* str, const char* prefix) {
     return strncmp(str, prefix, strlen(prefix)) == 0;
 }
 
+bool ends_with(const char* str, const char* suffix) {
+    if (!str || !suffix) {
+        return false;
+    }
+    size_t str_len = strlen(str);
+    size_t suffix_len = strlen(suffix);
+    if (suffix_len > str_len) {
+        return false;
+    }
+    return strncmp(str + str_len - suffix_len, suffix, suffix_len) == 0;
+}
+
 void extraer_condicion_if(const char* linea, char* condicion) {
     const char* inicio_if = strstr(linea, "if");  // Buscar "if"
     if (inicio_if != NULL) {
@@ -499,7 +511,7 @@ char **split(const char *str, const char *delim, int *count) {
 }
 
 void mostrar_error(const char* mensaje, int linea, const char* detalle) {
-    fprintf(stderr, "Error en la linea %d: %s -> %s\n", linea+1, mensaje, detalle);
+    fprintf(stderr, "Error en la linea %d: %s -> %s\n", linea+2, mensaje, detalle);
     exit(1);
 }
 
@@ -534,9 +546,10 @@ void analizar_inicializacion_variables(Nodo* arbol, char* linea, int* num_linea,
         if(buffer[0] == '\0'){
             continue;
         }
-        if(end_with_semicolon(buffer)){
-            trim_semicolon(buffer);
+        if(!end_with_semicolon(buffer)){
+            mostrar_error("; faltante", *num_linea, buffer);
         }
+        trim_semicolon(buffer);
         char** partesInicializacion = split(buffer, ":", &count);
         Nodo* nodo_asignacion = crear_nodo("asignacion", buffer);
         agregar_hijo(nodo_keyword, nodo_asignacion);
@@ -879,10 +892,14 @@ void analizar_expresion(Nodo* arbol, char* expr, int num_linea) {
 }
 
 void analizar_asignacion(Nodo* arbol, const char* linea, int num_linea){
-    ////printf("ANALIZAR ASIGNACION\n");
+    printf("ANALIZAR ASIGNACION\n");
+    printf("linea: %s\n", linea);
 
     int count = 0;
     char** partes = split(linea, ":=", &count);
+    printf("Count: %i\n", count);
+    printf("Partes 0 %s\n", partes[0]);
+    printf("Partes 1 %s\n", partes[1]);
     
     if (!partes || count != 2) {
         mostrar_error("Asignacion mal formada", num_linea, linea);
@@ -976,6 +993,51 @@ void analizar_writeln(Nodo* arbol, const char* linea, int num_linea) {
     Nodo* nodo_writeln = crear_nodo("writeln", linea);
     agregar_hijo(arbol, nodo_writeln);
     char* contenido_en_parentesis = extraer_parentesis(linea);
+    if((starts_with(contenido_en_parentesis, "\'"))){
+        printf("%s empieza con comillas simples\n", contenido_en_parentesis);
+        if(!ends_with(contenido_en_parentesis, "\'")){
+            printf("no termina con comillas simples\n");
+            mostrar_error("Comilla simple faltante", num_linea, linea);
+        }
+    }
+    if(ends_with(contenido_en_parentesis, "\'")){
+        printf("%s termina con comillas simples\n", contenido_en_parentesis);
+        if(!starts_with(contenido_en_parentesis, "\'")){
+            printf("no empieza con comillas simples\n");
+            //printf("%s", contenido_en_parentesis[1]);
+            mostrar_error("Comilla simple faltante", num_linea, linea);
+        }
+    }
+
+    size_t len = strlen(contenido_en_parentesis);
+
+    // if (len > 0) {
+    //     if ((contenido[0] == '\'' && contenido[len - 1] != '\'') &&
+    //       (contenido[0] != '\'' && contenido[len - 1] == '\'')) {
+    //       mostrar_error("Debe comenzar por comillas simples y viceversa", num_linea, linea);
+    //     }
+    // }
+    
+    if (contenido[0] != '\'' ||  contenido[len - 1] != '\'') {
+          int espacio_en_medio = 0;
+          for (size_t i = 1; i < len - 1; i++) { 
+              if (isspace(contenido[i])) {
+                  espacio_en_medio = 1;
+                  break;
+              }
+          }
+          if (espacio_en_medio) {
+              mostrar_error("El contenido del writeln no puede contener espacios en medio de los caracteres a menos que este encerrado entre comillas simples", num_linea, linea);
+          }
+      }
+
+    if(!starts_with(contenido_en_parentesis, "\'") && !ends_with(contenido_en_parentesis, "\'")){
+        // for (int i = 0; i < con; i++)
+        // {
+        //     /* code */
+        // }
+        
+    }
     //printf("Contenido en parentesis: %s\n", contenido_en_parentesis);
     Nodo* contenido_writeln = crear_nodo("contenido", contenido_en_parentesis);
     agregar_hijo(nodo_writeln, contenido_writeln);
@@ -992,6 +1054,11 @@ void analizar_if(Nodo* arbol, const char* linea, int *num_linea, FILE* archivo) 
     //     mostrar_error("La declaración debe terminar con ';'", *num_linea, linea);
     // }
     //printf("Condicion del if: %s\n", condicion);
+    int terminaConThen = ends_with(linea, "then");
+    printf("Termina con then: %i\n", terminaConThen);
+    if(!terminaConThen){
+        mostrar_error("La estructura if debe terminar con 'then'", *num_linea, linea);
+    }
     Nodo* nodo_if_statement = crear_nodo("if_statement", linea);
     agregar_hijo(arbol, nodo_if_statement);
     Nodo* nodo_if = crear_nodo("if", "if");
@@ -1051,6 +1118,11 @@ void analizar_while(Nodo* arbol, const char* linea, int *num_linea, FILE* archiv
     char buffer[256];
     trim((char*)linea);
     extraer_condicion_while(linea, condicion);
+    int terminaConDo = ends_with(linea, "do");
+    printf("Termina con do: %i\n", terminaConDo);
+    if(!terminaConDo){
+        mostrar_error("La estructura while debe terminar con 'do'", *num_linea, linea);
+    }
     //printf("Condicion del while: %s\n", condicion);
     Nodo* while_statement = crear_nodo("while_statement", linea);
     agregar_hijo(arbol, while_statement);
@@ -1113,9 +1185,15 @@ void analizar_for(Nodo* arbol, const char* linea, int *num_linea, FILE* archivo)
     char operador_control[256];
     char final[256];
     int count = 0;
+    int terminaConDo = ends_with(linea, "do");
+    printf("Termina con do: %i\n", terminaConDo);
+    if(!terminaConDo){
+        mostrar_error("La estructura for debe terminar con 'do'", *num_linea, linea);
+    }
     extraer_condicion_for(linea, inicializacion, operador_control, final);
+    //printf()
     ////printf("Condicion del for: %s\n", condicion);
-    //printf("Incializacion del for: %s\n", inicializacion);
+    printf("Incializacion del for: %s\n", inicializacion);
     char** partesInicializacion = split(inicializacion, ":=", &count);
     //printf("Parte 1 de la inicializacion: %s\n", partesInicializacion[0]);
     //printf("Parte 2 de la inicializacion: %s\n", partesInicializacion[1]);
@@ -1126,6 +1204,9 @@ void analizar_for(Nodo* arbol, const char* linea, int *num_linea, FILE* archivo)
     agregar_hijo(arbol, for_statement);
     Nodo* nodo_for = crear_nodo("for", "for");
     agregar_hijo(for_statement, nodo_for);
+    if(inicializacion[0]=='\0'){
+        mostrar_error("Operador de control to o downto no encontrado", *num_linea, linea);
+    }
     analizar_asignacion(for_statement, inicializacion, *num_linea);
     //Nodo* nodo_inicializacion =
     Nodo *nodo_operador_control = crear_nodo("operador_control", operador_control);
@@ -1197,17 +1278,16 @@ int main() {
         trim(linea);
         char ultima_linea[256];
         ////printf("Ultima linea: %s\n", ultima_linea);
-        if (*linea == '\0') continue;  // Ignorar lineas vacias
+        if (*linea == '\0') {
+            num_linea++;
+            continue;
+        };  // Ignorar lineas vacias
         for (int i = 0; linea[i]; i++) linea[i] = tolower(linea[i]);
-        //printf("linea en main %i: %s\n", num_linea, linea);
+
         if(starts_with(linea, "var")) {
-            ////printf("Es una inicializacion de variables en linea %i, %s\n", num_linea, linea);
+
             analizar_inicializacion_variables(arbol, linea, &num_linea, archivo, ultima_linea);
-            //printf("Linea al terminar la inicializacion de variables: %i\n", num_linea);
-            //printf("Linea al terminar la inicializacion de variables: %s\n", linea);
-            //num_linea--;
-            //continue;
-            //printf("Linea al decrementar la linea: %i\n", num_linea);
+
         }
         //printf("linea en main2 %i: %s\n", num_linea, linea);
         if (starts_with(linea, "function")) {

@@ -12,14 +12,15 @@ begin
   writeln('Hola, mundo!');
 end;
 
-function Sumar(a, b: integer): integer;
+function Sumar(a, b: integer; z, y: string; i: real ): integer;
 begin
     Sumar := a + b;
 end;
 
 begin
-    if x > 10 then
-        writeln('x es mayor que 10 vergacion par cono');
+    v := hola mundo;  
+    if  x > 10 then
+        writeln('x es mayor que 10');
     while y <> '' do
         writeln('y no está vacío');
     for i := 1 to 10 do
