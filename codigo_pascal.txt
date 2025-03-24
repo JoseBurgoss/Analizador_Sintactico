@@ -14,7 +14,7 @@ begin
 end;
 
 begin
-    if x > 10 the
+    if x > 10 then
         writeln('x es mayor que 10');
     while y <> '' do
         writeln('y no está vacío');
