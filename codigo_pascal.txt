@@ -1,25 +1,20 @@
 program Ejemplo;
 var
-  x, z: integer;
-  y, name: string;
-  a, b: real;
-  flag: boolean;
-  c: char;
-
+    x: integer;
+    y: string;
 
 procedure Saludar;
 begin
-  writeln('Hola, mundo!');
+    writeln('Hola');
 end;
 
-function Sumar(a, b: integer; z, y: string; i: real ): integer;
+function Sumar(a, b: integer): integer;
 begin
     Sumar := a + b;
 end;
 
 begin
-    v := hola mundo;  
-    if  x > 10 then
+    if x > 10 the
         writeln('x es mayor que 10');
     while y <> '' do
         writeln('y no está vacío');
